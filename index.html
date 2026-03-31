@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>无水印视频解析下载</title>
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    max-width: 600px;
+    margin: 30px auto;
+    padding: 0 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .container {
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    width: 100%;
+  }
+
+  h2 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 30px;
+    font-size: 24px;
+  }
+
+  .input-group {
+    position: relative;
+    margin-bottom: 20px;
+  }
+
+  input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    outline: none;
+  }
+
+  input:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+
+  input::placeholder {
+    color: #999;
+  }
+
+  .button-group {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  button {
+    flex: 1;
+    min-width: 140px;
+    padding: 14px 24px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  .parse {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+  }
+
+  .parse:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+  }
+
+  .download {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    color: white;
+  }
+
+  .download:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(17, 153, 142, 0.4);
+  }
+
+  .loading {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .video-container {
+    margin-top: 30px;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #000;
+    position: relative;
+    display: none;
+  }
+
+  .video-container.show {
+    display: block;
+    animation: fadeIn 0.5s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  video {
+    width: 100%;
+    display: block;
+    max-height: 500px;
+  }
+
+  .toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    padding: 14px 28px;
+    border-radius: 50px;
+    color: white;
+    font-weight: 500;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    z-index: 1000;
+    opacity: 0;
+    text-align: center;
+    max-width: 90%;
+    word-wrap: break-word;
+  }
+
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+
+  .toast.success {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  }
+
+  .toast.error {
+    background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+  }
+
+  .toast.warning {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  }
+
+  .info {
+    margin-top: 20px;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border-left: 4px solid #667eea;
+    font-size: 13px;
+    color: #666;
+    line-height: 1.6;
+  }
+
+  .info strong {
+    color: #333;
+  }
+
+  .api-status {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    text-align: center;
+  }
+
+  .api-status.success {
+    background: #d4edda;
+    color: #155724;
+  }
+
+  .api-status.error {
+    background: #f8d7da;
+    color: #721c24;
+  }
+
+  @media (max-width: 480px) {
+    .container {
+      padding: 24px;
+    }
+    
+    h2 {
+      font-size: 20px;
+    }
+    
+    button {
+      min-width: 100%;
+    }
+  }
+</style>
+</head>
+
+<body>
+  <div class="container">
+    <h2>🎬 无水印视频解析 & 下载</h2>
+    
+    <div class="input-group">
+      <input 
+        type="text" 
+        id="link" 
+        placeholder="粘贴抖音/快手/小红书等视频链接" 
+        autocomplete="off"
+      />
+    </div>
+    
+    <div class="button-group">
+      <button class="parse" id="parseBtn" onclick="parse()">
+        <span>解析无水印视频</span>
+      </button>
+      <button class="download" id="downBtn" onclick="save()" style="display:none">
+        <span>💾 下载到本地</span>
+      </button>
+    </div>
+
+    <div class="video-container" id="videoContainer">
+      <video id="player" controls playsinline poster=""></video>
+    </div>
+
+    <div class="api-status" id="apiStatus" style="display:none"></div>
+
+    <div class="info">
+      <strong>💡 使用提示：</strong><br>
+      支持抖音、快手、小红书等平台视频链接解析。若解析失败，可能是链接格式问题或接口暂时不可用。
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // 状态管理
+    const state = {
+      videoUrl: "",
+      isLoading: false
+    };
+
+    // 可用的解析 API 列表（按优先级排序）
+    const API_LIST = [
+      {
+        name: 'jx.ayoc.cc',
+        url: (link) => `https://jx.ayoc.cc/api/jx?url=${encodeURIComponent(link)}`,
+        parse: (data) => data.data?.url || data.url || data.video_url
+      },
+      {
+        name: 'api.pearktrue.cn',
+        url: (link) => `https://api.pearktrue.cn/api/douyin/?url=${encodeURIComponent(link)}`,
+        parse: (data) => data.data?.video_url || data.video_url || data.url
+      },
+      {
+        name: 'api.oioweb.cn',
+        url: (link) => `https://api.oioweb.cn/api/douyin.php?url=${encodeURIComponent(link)}`,
+        parse: (data) => data.result?.video_url || data.video_url || data.url
+      }
+    ];
+
+    // DOM 元素缓存
+    const elements = {
+      linkInput: document.getElementById('link'),
+      parseBtn: document.getElementById('parseBtn'),
+      downBtn: document.getElementById('downBtn'),
+      videoContainer: document.getElementById('videoContainer'),
+      player: document.getElementById('player'),
+      toast: document.getElementById('toast'),
+      apiStatus: document.getElementById('apiStatus')
+    };
+
+    // 显示提示消息
+    function showToast(message, type = 'success', duration = 3000) {
+      const toast = elements.toast;
+      toast.textContent = message;
+      toast.className = `toast ${type}`;
+      
+      void toast.offsetWidth;
+      toast.classList.add('show');
+      
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, duration);
+    }
+
+    // 显示 API 状态
+    function showApiStatus(message, isSuccess) {
+      const status = elements.apiStatus;
+      status.textContent = message;
+      status.className = `api-status ${isSuccess ? 'success' : 'error'}`;
+      status.style.display = 'block';
+      
+      if (!isSuccess) {
+        setTimeout(() => {
+          status.style.display = 'none';
+        }, 5000);
+      }
+    }
+
+    // 设置加载状态
+    function setLoading(loading) {
+      state.isLoading = loading;
+      const btn = elements.parseBtn;
+      
+      if (loading) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading"></span><span>解析中...</span>';
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = '<span>解析无水印视频</span>';
+      }
+    }
+
+    // 尝试单个 API
+    async function tryApi(apiConfig, link, signal) {
+      const response = await fetch(apiConfig.url(link), {
+        signal,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const videoUrl = apiConfig.parse(data);
+      
+      if (!videoUrl) {
+        throw new Error('未获取到视频地址');
+      }
+      
+      return videoUrl;
+    }
+
+    // 解析视频 - 自动尝试多个 API
+    async function parse() {
+      const url = elements.linkInput.value.trim();
+      
+      if (!url) {
+        showToast('请输入视频链接', 'warning');
+        elements.linkInput.focus();
+        return;
+      }
+
+      // 链接格式验证
+      const validPatterns = [
+        /douyin\.com/i,
+        /kuaishou\.com/i,
+        /xiaohongshu\.com/i,
+        /xhslink\.com/i,
+        /iesdouyin\.com/i
+      ];
+      
+      const isValidUrl = validPatterns.some(pattern => pattern.test(url));
+      if (!isValidUrl) {
+        showToast('请输入有效的抖音/快手/小红书链接', 'warning');
+        return;
+      }
+
+      setLoading(true);
+      elements.apiStatus.style.display = 'none';
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+      let lastError = null;
+      
+      // 依次尝试每个 API
+      for (let i = 0; i < API_LIST.length; i++) {
+        const api = API_LIST[i];
+        
+        try {
+          console.log(`尝试 API ${i + 1}/${API_LIST.length}: ${api.name}`);
+          
+          const videoUrl = await tryApi(api, url, controller.signal);
+          
+          clearTimeout(timeoutId);
+          
+          // 成功获取视频地址
+          state.videoUrl = videoUrl;
+          
+          // 更新播放器
+          elements.player.src = videoUrl;
+          elements.videoContainer.classList.add('show');
+          elements.downBtn.style.display = 'flex';
+          
+          // 尝试自动播放
+          elements.player.play().catch(() => {});
+          
+          showToast(`✅ 解析成功 (via ${api.name})`, 'success');
+          showApiStatus(`当前使用接口: ${api.name}`, true);
+          
+          // 清空输入框
+          elements.linkInput.value = '';
+          
+          setLoading(false);
+          return;
+          
+        } catch (err) {
+          lastError = err;
+          console.warn(`API ${api.name} 失败:`, err.message);
+          continue; // 尝试下一个 API
+        }
+      }
+      
+      // 所有 API 都失败了
+      clearTimeout(timeoutId);
+      setLoading(false);
+      
+      console.error('所有 API 均失败:', lastError);
+      showToast('❌ 解析失败，所有接口均不可用，请稍后重试', 'error');
+      showApiStatus('所有解析接口暂时不可用，请稍后重试', false);
+    }
+
+    // 下载视频
+    async function save() {
+      if (!state.videoUrl) {
+        showToast('请先解析视频', 'warning');
+        return;
+      }
+
+      try {
+        const btn = elements.downBtn;
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading"></span><span>准备下载...</span>';
+
+        // 尝试通过 Blob 下载
+        const response = await fetch(state.videoUrl, {
+          mode: 'no-cors' // 尝试绕过 CORS
+        });
+        
+        // 如果上面成功（不太可能，因为 no-cors 返回 opaque）
+        // 降级为直接打开链接
+        throw new Error('CORS blocked');
+        
+      } catch (err) {
+        // 降级方案：直接打开视频链接让用户手动保存
+        console.log('使用降级下载方案');
+        
+        // 在新标签页打开视频
+        window.open(state.videoUrl, '_blank');
+        
+        // 尝试使用 a 标签下载（可能因 CORS 失败，但值得一试）
+        const a = document.createElement('a');
+        a.href = state.videoUrl;
+        a.download = `无水印视频_${Date.now()}.mp4`;
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        showToast('📥 已打开视频，请长按/右键保存', 'success', 5000);
+      } finally {
+        elements.downBtn.disabled = false;
+        elements.downBtn.innerHTML = '<span>💾 下载到本地</span>';
+      }
+    }
+
+    // 键盘事件支持
+    elements.linkInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && !state.isLoading) {
+        parse();
+      }
+    });
+
+    // 粘贴事件自动清理
+    elements.linkInput.addEventListener('paste', (e) => {
+      setTimeout(() => {
+        const value = elements.linkInput.value;
+        // 提取 URL
+        const urlMatch = value.match(/(https?:\/\/[^\s]+)/);
+        if (urlMatch) {
+          elements.linkInput.value = urlMatch[1];
+        }
+      }, 0);
+    });
+
+    // 视频加载错误处理
+    elements.player.addEventListener('error', (e) => {
+      console.error('视频加载错误:', e);
+      showToast('⚠️ 视频加载失败，可能是链接已过期', 'error');
+    });
+  </script>
+</body>
+</html>
